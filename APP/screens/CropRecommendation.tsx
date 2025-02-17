@@ -8,10 +8,10 @@ import {
   Image,
   Dimensions,
   Animated,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { Picker } from '@react-native-picker/picker';
 import { LineChart, PieChart, BarChart } from "react-native-chart-kit";
 
 const theme = {
@@ -43,6 +43,15 @@ const CropRecommendation = ({ route }) => {
     soil_moisture: "40",
     water_level: "78.2",
   });
+
+  const dropdownOptions = {
+    n: Array.from({ length: 24 }, (_, i) => (i * 5).toString()), // 0 to 120 in steps of 5
+    p: Array.from({ length: 15 }, (_, i) => (i * 5).toString()), // 0 to 75 in steps of 5
+    k: Array.from({ length: 17 }, (_, i) => (i * 5).toString()), // 0 to 85 in steps of 5
+    soil_moisture: Array.from({ length: 34 }, (_, i) => (17 + i * 0.5).toFixed(1)), // 17 to 34 in steps of 0.5
+    ph: Array.from({ length: 28 }, (_, i) => (4.7 + i * 0.1).toFixed(1)), // 4.7 to 7.5 in steps of 0.1
+    water_level: Array.from({ length: 41 }, (_, i) => ((i * 5) + 40).toString()), // 40 to 240 in steps of 5
+  };
 
   const [sensorData, setSensorData] = useState({
     "-O4au0_OKuJStajyzN5a": {
@@ -78,13 +87,11 @@ const CropRecommendation = ({ route }) => {
   }, []);
 
   const updateSensorValue = (key, value) => {
-    // Update the input values state
     setInputValues(prev => ({
       ...prev,
       [key]: value
     }));
 
-    // Update the sensor data with parsed float value
     setSensorData(prevData => ({
       "-O4au0_OKuJStajyzN5a": {
         ...prevData["-O4au0_OKuJStajyzN5a"],
@@ -135,27 +142,20 @@ const CropRecommendation = ({ route }) => {
     >
       <Text style={[styles.blockTitle, { color: theme.text }]}>{title}</Text>
       <View style={styles.inputContainer}>
-        <TextInput
-          style={[
-            styles.input,
-            { color: theme.primary },
-            focusedInput === valueKey && styles.focusedInput,
-          ]}
-          value={inputValues[valueKey]}
-          onChangeText={(value) => {
-            if (/^\d*\.?\d*$/.test(value)) {
-              updateSensorValue(valueKey, value);
-            }
-          }}
-          onFocus={() => setFocusedInput(valueKey)}
-          onBlur={() => setFocusedInput(null)}
-          keyboardType="numeric"
-          returnKeyType="done"
-          placeholder={`Enter ${title}`}
-          placeholderTextColor="#999"
-          selectTextOnFocus
-        />
-        {unit && <Text style={[styles.unitText, { color: theme.text }]}>{unit}</Text>}
+        <Picker
+          selectedValue={inputValues[valueKey]}
+          style={[styles.picker, { color: theme.primary }]}
+          onValueChange={(value) => updateSensorValue(valueKey, value)}
+        >
+          {dropdownOptions[valueKey].map((value) => (
+            <Picker.Item 
+              key={value} 
+              label={`${value}${unit}`} 
+              value={value}
+              style={{ color: theme.primary }}
+            />
+          ))}
+        </Picker>
       </View>
     </Animated.View>
   );
@@ -338,7 +338,6 @@ const CropRecommendation = ({ route }) => {
     </KeyboardAvoidingView>
   );
 };
-
 
 const styles = StyleSheet.create({
   container: {
