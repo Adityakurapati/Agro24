@@ -16,15 +16,13 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from 'expo-file-system';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-
-// Agricultural color scheme
 const COLORS = {
-  primary: '#2F5233',     // Dark forest green
-  secondary: '#4B7B3B',   // Medium green
-  accent: '#8BC34A',      // Light green
-  background: '#F4F9F1',  // Light mint
-  text: '#1C2F1C',       // Dark green text
-  warning: '#FFA000',    // Warning orange
+  primary: '#2F5233',
+  secondary: '#4B7B3B',
+  accent: '#8BC34A',
+  background: '#F4F9F1',
+  text: '#1C2F1C',
+  warning: '#FFA000',
   white: '#FFFFFF'
 };
 
@@ -35,16 +33,18 @@ const CropHealthDetection = ({ route }) => {
   const [analysis, setAnalysis] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   
-  // Animation values
   const fadeAnim = new Animated.Value(0);
   const scaleAnim = new Animated.Value(0.95);
   const spinValue = new Animated.Value(0);
 
-  // Spinning animation for loading state
   const spin = spinValue.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg']
   });
+
+  useEffect(() => {
+    requestPermissions();
+  }, []);
 
   useEffect(() => {
     if (analysis) {
@@ -77,22 +77,45 @@ const CropHealthDetection = ({ route }) => {
     }
   }, [isLoading]);
 
-  const pickImage = async () => {
+  const requestPermissions = async () => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
-      });
+      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+      const libraryPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (!cameraPermission.granted || !libraryPermission.granted) {
+        Alert.alert(
+          "Permissions Required",
+          "Camera and media library access are needed for this feature to work."
+        );
+      }
+    } catch (error) {
+      console.error("Error requesting permissions:", error);
+    }
+  };
+
+  const pickImage = async (useCamera: boolean) => {
+    try {
+      const result = useCamera 
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
+          });
 
       if (!result.canceled) {
         setImageUri(result.assets[0].uri);
         await analyzeCropHealth(result.assets[0].uri);
       }
     } catch (error) {
-      console.error("Error picking image:", error);
-      Alert.alert("Error", "Failed to pick an image.");
+      console.error("Error capturing/picking image:", error);
+      Alert.alert("Error", "Failed to capture/select an image.");
     }
   };
 
@@ -158,20 +181,33 @@ Prevention Tips:
         <Text style={styles.headerText}>Crop Health Analysis</Text>
       </View>
 
-      <TouchableOpacity 
-        style={styles.uploadButton} 
-        onPress={pickImage}
-        disabled={isLoading}
-      >
-        <MaterialCommunityIcons 
-          name="camera-plus" 
-          size={24} 
-          color={COLORS.white} 
-        />
-        <Text style={styles.uploadButtonText}>
-          {isLoading ? "Processing..." : "Select Image"}
-        </Text>
-      </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity 
+          style={[styles.uploadButton, styles.cameraButton]} 
+          onPress={() => pickImage(true)}
+          disabled={isLoading}
+        >
+          <MaterialCommunityIcons 
+            name="camera" 
+            size={24} 
+            color={COLORS.white} 
+          />
+          <Text style={styles.uploadButtonText}>Camera</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.uploadButton, styles.galleryButton]} 
+          onPress={() => pickImage(false)}
+          disabled={isLoading}
+        >
+          <MaterialCommunityIcons 
+            name="image" 
+            size={24} 
+            color={COLORS.white} 
+          />
+          <Text style={styles.uploadButtonText}>Gallery</Text>
+        </TouchableOpacity>
+      </View>
       
       {imageUri && (
         <Animated.View 
@@ -239,14 +275,24 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontWeight: 'bold',
   },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
   uploadButton: {
     flexDirection: 'row',
-    backgroundColor: COLORS.secondary,
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    flex: 0.48,
+  },
+  cameraButton: {
+    backgroundColor: COLORS.primary,
+  },
+  galleryButton: {
+    backgroundColor: COLORS.secondary,
   },
   uploadButtonText: {
     color: COLORS.white,
